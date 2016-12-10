@@ -20,7 +20,7 @@ public abstract class Histogram {
 
     abstract void add(double v);
 
-    abstract double[] getCenters();
+    abstract double[] getBounds();
 
     abstract long[] getCounts();
 

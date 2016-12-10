@@ -71,7 +71,7 @@ public class ExpHistogram extends Histogram {
     }
 
     @Override
-    public double[] getCenters() {
+    public double[] getBounds() {
         double[] r = new double[cuts.length];
         double x = min;
         for (int i = 0; i < r.length; i++) {

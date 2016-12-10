@@ -27,7 +27,7 @@ public class Analyze {
         }
         System.err.printf("Average time = %.3f us\n", t * 1e-3 / n);
         System.err.printf("Compressed size = %d bytes\n", histo.getCompressedCounts().length * 8);
-        double[] cuts = histo.getCenters();
+        double[] cuts = histo.getBounds();
         long[] counts = histo.getCounts();
         for (int i = 0; i < cuts.length; i++) {
             System.out.printf("%.2f,%d\n", cuts[i], counts[i]);

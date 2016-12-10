@@ -11,8 +11,9 @@ public class FloatHistogram extends Histogram {
     private final long[] counts;
     private final double min;
     private final double max;
-    private final double fuzz;
     private final int bitsOfPrecision;
+    private final int shift;
+    private int offset;
 
     public FloatHistogram(double min, double max) {
         this(min, max, 50);
@@ -25,8 +26,12 @@ public class FloatHistogram extends Histogram {
 
         // convert binsPerDecade into bins per octave, then figure out how many bits that takes
         bitsOfPrecision = (int) Math.ceil(Math.log(binsPerDecade * Math.log10(2)) / Math.log(2));
-        int binCount = (int) Math.ceil(Math.log(max / min) / Math.log(2) * Math.pow(2, bitsOfPrecision));
+        // we keep just the required amount of the mantissa
+        shift = 52 - bitsOfPrecision;
+        // The exponent in a floating point number is offset
+        offset = 0x3ff << bitsOfPrecision;
 
+        int binCount = bucketIndex(max) + 1;
         if (binCount > 10000) {
             throw new IllegalArgumentException(
                     String.format("Excessive number of bins %d resulting from min,max,binsPerDecade = %.2g, %.2g, %.2g",
@@ -34,25 +39,27 @@ public class FloatHistogram extends Histogram {
 
         }
         counts = new long[binCount];
-        fuzz = (1 + Math.pow(2, -(bitsOfPrecision + 1))) / min;
     }
 
-    private int bucket(double x) {
+    // exposed for testing
+    int bucket(double x) {
         if (x <= min) {
             return 0;
         } else if (x >= max) {
             return counts.length - 1;
         } else {
-            x *= fuzz;
-            int shift1 = 52 - bitsOfPrecision;
-            int shift2 = 0x3ff << bitsOfPrecision;
-            long floatBits = Double.doubleToLongBits(x);
-            return (int) (floatBits >>> shift1) - shift2;
+            return bucketIndex(x);
         }
     }
 
-    private double center(int k) {
-        return Double.longBitsToDouble((k + (0x3ffL << bitsOfPrecision)) << (52 - bitsOfPrecision)) / fuzz;
+    private int bucketIndex(double x) {
+        x = x / min;
+        long floatBits = Double.doubleToLongBits(x);
+        return (int) (floatBits >>> shift) - offset;
+    }
+
+    private double lowerBound(int k) {
+        return min * Double.longBitsToDouble((k + (0x3ffL << bitsOfPrecision)) << (52 - bitsOfPrecision)) /* / fuzz */;
     }
 
     @Override
@@ -61,10 +68,10 @@ public class FloatHistogram extends Histogram {
     }
 
     @Override
-    public double[] getCenters() {
+    public double[] getBounds() {
         double[] r = new double[counts.length];
         for (int i = 0; i < r.length; i++) {
-            r[i] = center(i);
+            r[i] = lowerBound(i);
         }
         return r;
     }
